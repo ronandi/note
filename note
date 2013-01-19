@@ -1,0 +1,71 @@
+#! /usr/bin/env ruby
+require 'optparse'
+NOTEDIR = "#{ENV["HOME"]}/.notes/"
+
+options = {}
+
+opt_parser = OptionParser.new do |opts|
+    opts.banner = "Usage: note COMMAND"
+    opts.separator ""
+    opts.separator "Commands"
+    opts.separator "    new 'title' 'shortname': create new note"
+    opts.separator "    open 'shortname': open an existing note"
+    opts.separator "    list: list existing notes"
+    opts.separator ""
+end
+
+opt_parser.parse!
+
+#check if directory exists yet
+if not File.directory?(NOTEDIR)
+    puts "Creating notes directory in #{NOTEDIR}"
+    Dir.mkdir NOTEDIR
+end
+
+case ARGV[0]
+when "new"
+    #create a new note
+    if not ARGV[1] && ARGV[2]
+        puts "missing argument(s)"
+    else
+        notedir = "#{NOTEDIR}/#{ARGV[2]}.txt"
+        if not File.exist? notedir
+            begin
+                file = File.open notedir, "w"
+                file.write("Title: #{ARGV[1]}")
+            rescue IOError => e
+                puts e
+            ensure 
+                file.close unless file == nil
+            end
+            exec "#{ENV['EDITOR']} #{notedir}"
+        else
+            puts "File with that shortname already exists"
+        end
+    end
+when "open"
+    if not ARGV[1]
+        puts "missing argument"
+    end
+    #open an existing note
+    retval = Dir.foreach(NOTEDIR) do |filename|
+        next if filename == '.' or filename=='..'
+        if filename.match(/(.*).txt/)[1] == ARGV[1]
+            exec "#{ENV['EDITOR']} #{NOTEDIR}/#{filename}"
+        end
+    end
+    if not retval
+        puts "note with that name doesnt exist"
+    end
+when "list"
+    puts ""
+    Dir.foreach(NOTEDIR) do |filename|
+        next if filename == '.' or filename=='..'
+        File.open("#{NOTEDIR}/#{filename}") {|f| puts "\t" + f.readline.match(/Title: (.*)/)[1] + ":\t\033[32m#{filename.match(/(.*).txt/)[1]}\033[0m"}
+    end
+    puts ""
+    #list current notes
+else
+    puts opt_parser
+end
+
